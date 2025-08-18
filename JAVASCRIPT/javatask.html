@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>All-in-One Web Utility</title>
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <style>
+    video, canvas {
+      border: 1px solid black;
+      margin-top: 10px;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    textarea, input, button {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>📩 Send WhatsApp Message</h2>
+  <textarea id="t1" placeholder="Type your message here..."></textarea><br>
+  <button onclick="LW()">Send to WhatsApp</button>
+  <div id="d1"></div>
+
+  <hr>
+  <h2>📍 Show My Location</h2>
+  <button onclick="getLocation()">Get Location</button>
+  <p id="output"></p>
+
+  <hr>
+  <h2>🛒 Find Nearby Grocery Stores</h2>
+  <button onclick="findGroceryStores()">Show Grocery Stores</button>
+
+  <hr>
+  <h2>🚗 Route: Mansarovar to Sitapura</h2>
+  <button onclick="openGoogleMapsRoute()">Show Directions</button>
+
+  <hr>
+  <h2>📸 Capture Photo</h2>
+  <video id="video" width="320" height="240" autoplay></video><br>
+  <button onclick="takePhoto()">Take Photo</button>
+  <canvas id="canvas" width="320" height="240" style="display:none;"></canvas><br>
+  <a id="downloadLink" style="display:none;">Download Image</a>
+
+  <hr>
+  <h2>🎥 Record Video</h2>
+  <video id="preview" autoplay muted playsinline width="480"></video><br>
+  <button onclick="startRecording()">Start Recording</button>
+  <button onclick="stopRecording()">Stop Recording</button><br>
+  <video id="playback" controls width="480"></video>
+
+  <hr>
+  <h2>📧 Send Email (Text Form)</h2>
+  <form id="text-email-form">
+    <input type="text" name="from_name" placeholder="Your Name" required><br><br>
+    <input type="email" name="reply_to" placeholder="Your Email" required><br><br>
+    <textarea name="message" placeholder="Your Message" required></textarea><br><br>
+    <button type="submit">Send Text Email</button>
+  </form>
+
+  <hr>
+  <h2>📸 Capture Photo & Send via Email</h2>
+  <button onclick="startCamera()">Open Camera</button><br>
+  <button id="snapBtn" onclick="takePhotoForEmail()" style="display:none;">Take Photo</button>
+  <form id="email-form" style="display:none;">
+    <input type="hidden" name="from_name" value="Webcam User">
+    <input type="hidden" name="reply_to" value="user@example.com">
+    <input type="hidden" name="message" id="photoData">
+    <button type="submit">Send Email with Photo</button>
+  </form>
+
+  <script>
+    emailjs.init("TMRkrarUmgfjdfh8t");
+
+    // WhatsApp
+    function LW() {
+      const message = document.getElementById("t1").value;
+      const phoneNumber = "919993917162";
+      const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+      document.getElementById("d1").innerText = "Opening WhatsApp with message: " + message;
+      window.open(url);
+    }
+
+    // Location
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition, showError);
+      } else {
+        document.getElementById("output").innerText = "Geolocation is not supported by this browser.";
+      }
+    }
+
+    function showPosition(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      document.getElementById("output").innerHTML =
+        `Latitude: ${lat} <br>Longitude: ${lon} <br><a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank">View on Google Maps</a>`;
+    }
+
+    function showError(error) {
+      alert("Error: " + error.message);
+    }
+
+    // Grocery
+    function findGroceryStores() {
+      navigator.geolocation.getCurrentPosition(function(position) {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const mapsUrl = `https://www.google.com/maps/search/grocery+store/@${lat},${lon},15z`;
+        window.open(mapsUrl, '_blank');
+      }, function(error) {
+        alert("Error getting location: " + error.message);
+      });
+    }
+
+    // Route
+    function openGoogleMapsRoute() {
+      const url = "https://www.google.com/maps/dir/Mansarovar,+Jaipur/Sitapura,+Jaipur";
+      window.open(url, "_blank");
+    }
+
+    // Camera init
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const downloadLink = document.getElementById('downloadLink');
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+      video.srcObject = stream;
+    }).catch(err => alert("Camera access denied: " + err));
+
+    function takePhoto() {
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageDataURL = canvas.toDataURL('image/png');
+      downloadLink.href = imageDataURL;
+      downloadLink.download = 'captured_image.png';
+      downloadLink.textContent = 'Download Photo';
+      downloadLink.style.display = 'inline';
+    }
+
+    // Record Video
+    let mediaRecorder, recordedChunks = [], stream;
+    async function startRecording() {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      document.getElementById('preview').srcObject = stream;
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const videoURL = URL.createObjectURL(blob);
+        document.getElementById('playback').src = videoURL;
+        const a = document.createElement('a');
+        a.href = videoURL;
+        a.download = 'recorded_video.webm';
+        a.click();
+        stream.getTracks().forEach(track => track.stop());
+      };
+      mediaRecorder.start();
+      alert("Recording started. Press Stop when done.");
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    }
+
+    // Text Email
+    document.getElementById('text-email-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+      emailjs.sendForm('service_xtffw0u', 'template_p9cu2dq', this)
+        .then(() => alert("Text email sent successfully!"))
+        .catch(error => alert("Failed to send text email:\n" + JSON.stringify(error)));
+    });
+
+    // Capture and Send Photo via Email
+    const photoDataInput = document.getElementById('photoData');
+    const form = document.getElementById('email-form');
+    const snapBtn = document.getElementById('snapBtn');
+
+    function startCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
+        stream = s;
+        video.srcObject = stream;
+        video.style.display = "block";
+        snapBtn.style.display = "inline";
+      }).catch(err => alert("Camera access denied: " + err));
+    }
+
+    function takePhotoForEmail() {
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const photoData = canvas.toDataURL('image/png');
+      photoDataInput.value = photoData;
+      stream.getTracks().forEach(track => track.stop());
+      video.style.display = "none";
+      snapBtn.style.display = "none";
+      form.style.display = "block";
+    }
+
+    form.addEventListener('submit', function(event) {
+      event.preventDefault();
+      emailjs.sendForm('service_xtffw0u', 'template_p9cu2dq', this)
+        .then(() => alert("Email sent with photo!"))
+        .catch(error => alert("Failed to send email:\n" + JSON.stringify(error)));
+    });
+  </script>
+
+</body>
+</html>
